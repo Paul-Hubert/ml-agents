@@ -36,7 +36,7 @@ def get_default_stats_writers(run_options: RunOptions) -> List[StatsWriter]:
         ),
         GaugeWriter(),
         ConsoleWriter(),
-        WandbWriter()
+        WandbWriter(run_options)
     ]
 
 

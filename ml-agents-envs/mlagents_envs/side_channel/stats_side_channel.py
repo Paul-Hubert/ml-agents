@@ -7,7 +7,7 @@ from mlagents_envs.side_channel import SideChannel, IncomingMessage
 
 
 # Determines the behavior of how multiple stats within the same summary period are combined.
-class StatsAggregationMethod(Enum):
+class StatsAggregationMethod(int, Enum):
     # Values within the summary period are averaged before reporting.
     AVERAGE = 0
 

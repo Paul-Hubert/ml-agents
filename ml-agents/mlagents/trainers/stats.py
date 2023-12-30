@@ -8,6 +8,9 @@ import time
 from threading import RLock
 import wandb
 
+from mlagents.trainers.settings import RunOptions
+from mlagents.trainers.cli_utils import StoreConfigFile
+
 from mlagents_envs.side_channel.stats_side_channel import StatsAggregationMethod
 
 from mlagents_envs.logging_util import get_logger
@@ -286,17 +289,34 @@ class TensorboardWriter(StatsWriter):
                 self.summary_writers[category].add_text("Hyperparameters", summary)
                 self.summary_writers[category].flush()
 
+from collections.abc import MutableMapping
+
+def flatten_dict(d: MutableMapping, parent_key: str = '', sep: str ='/') -> MutableMapping:
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, MutableMapping):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+    
 
 class WandbWriter(StatsWriter):
     def __init__(
-        self,
-        config: dict
+        self, run_options : RunOptions
     ):
         """
         A Weights and Biases Wrapper that will add stats to your wandb.ai board.
         """
-        wandb.init(reinit=True,
-                   config=config)
+        wandb.setup(wandb.Settings(program=__name__, program_relpath=__name__))
+        #options = flatten_dict(run_options.as_dict())
+        options = run_options.as_dict()
+        wandb.init(project="Dynamical",
+                   reinit=True,
+                   config=options,
+                   id=run_options.checkpoint_settings.run_id,
+                   name=run_options.checkpoint_settings.run_id)
 
     def write_stats(
         self,
@@ -307,7 +327,12 @@ class WandbWriter(StatsWriter):
         """
         Write some stats for a given category and step
         """
-        wandb.log({category : values}, step=step)
+        vals = {}
+        for key, value in values.items():
+            vals[f"{key}"] = value.aggregated_value
+            if value.aggregation_method == StatsAggregationMethod.HISTOGRAM:
+                vals[f"{key}_hist"] = wandb.Histogram(value.full_dist)
+        wandb.log({category : vals}, step=step)
 
 
 class StatsReporter:
