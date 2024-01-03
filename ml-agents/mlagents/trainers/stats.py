@@ -320,7 +320,7 @@ class WandbWriter(StatsWriter):
             vals[f"{key}"] = value.aggregated_value
             if value.aggregation_method == StatsAggregationMethod.HISTOGRAM:
                 vals[f"{key}_hist"] = wandb.Histogram(value.full_dist)
-        wandb.log({category : vals}, step=step)
+        wandb.log(vals, step=step)
 
 
 class StatsReporter:
