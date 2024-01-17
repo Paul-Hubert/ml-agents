@@ -315,7 +315,7 @@ class WandbWriter(StatsWriter):
         """
         Write some stats for a given category and step
         """
-        vals = {}
+        vals = {"category" : category}
         for key, value in values.items():
             vals[f"{key}"] = value.aggregated_value
             if value.aggregation_method == StatsAggregationMethod.HISTOGRAM:
