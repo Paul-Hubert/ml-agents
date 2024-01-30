@@ -33,15 +33,20 @@ class GAILRewardProvider(BaseRewardProvider):
         self.optimizer = torch.optim.Adam(params, lr=settings.learning_rate)
 
     def fix_agent_buffer(self, mini_batch: AgentBuffer) -> AgentBuffer:
+        removed_index = self._discriminator_network.removed_index
+        if removed_index < 0:
+            return mini_batch
         batch = AgentBuffer()
+        removed = False
         for key, field in mini_batch._fields.items():
             if isinstance(key, tuple):
                 key0, key1 = key
                 if isinstance(key0, ObservationKeyPrefix):
                     if isinstance(key1, int):
-                        if key1 == 0:
+                        if key1 == removed_index:
+                            removed = True
                             continue
-                        else:
+                        elif removed:
                             key1 = key1-1
                             key = (key0, key1)
             batch[key] = field
@@ -89,6 +94,8 @@ class DiscriminatorNetwork(torch.nn.Module):
     EPSILON = 1e-7
     initial_beta = 0.0
 
+    removed_index = -1
+
     def __init__(self, specs: BehaviorSpec, settings: GAILSettings) -> None:
         super().__init__()
         self._use_vail = settings.use_vail
@@ -105,7 +112,16 @@ class DiscriminatorNetwork(torch.nn.Module):
         unencoded_size = (
             self._action_flattener.flattened_size + 1 if settings.use_actions else 0
         )  # +1 is for dones
-        observation_specs = [spec for spec in specs.observation_specs if spec.name != "Goals"]
+
+        specs = []
+        for i in range(len(specs.observation_specs)):
+            spec = specs.observation_specs
+            if spec.name.contains("nogail"):
+                self.removed_index = i
+            else:
+                specs.append(spec)
+        observation_specs = specs
+
         self.encoder = NetworkBody(
             observation_specs, encoder_settings, unencoded_size
         )
