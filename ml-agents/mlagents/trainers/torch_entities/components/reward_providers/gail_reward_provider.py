@@ -116,7 +116,7 @@ class DiscriminatorNetwork(torch.nn.Module):
         specs = []
         for i in range(len(specs.observation_specs)):
             spec = specs.observation_specs
-            if spec.name.contains("nogail"):
+            if "nogail" in spec.name:
                 self.removed_index = i
             else:
                 specs.append(spec)
