@@ -113,14 +113,13 @@ class DiscriminatorNetwork(torch.nn.Module):
             self._action_flattener.flattened_size + 1 if settings.use_actions else 0
         )  # +1 is for dones
 
-        specs = []
+        observation_specs = []
         for i in range(len(specs.observation_specs)):
-            spec = specs.observation_specs
+            spec = specs.observation_specs[i]
             if "nogail" in spec.name:
                 self.removed_index = i
             else:
-                specs.append(spec)
-        observation_specs = specs
+                observation_specs.append(spec)
 
         self.encoder = NetworkBody(
             observation_specs, encoder_settings, unencoded_size
