@@ -164,14 +164,17 @@ namespace Unity.MLAgents.Demonstrations
             var literalName = demonstrationName;
             var filePath = Path.Combine(demonstrationDirectory, literalName + k_ExtensionType);
             var uniqueNameCounter = 0;
-            while (fileSystem.File.Exists(filePath))
+            if (fileSystem.File.Exists(filePath)) fileSystem.File.Delete(filePath);
+            /*
             {
+                file
                 // TODO should we use a timestamp instead of a counter here? This loops an increasing number of times
                 // as the number of demos increases.
                 literalName = demonstrationName + "_" + uniqueNameCounter;
                 filePath = Path.Combine(demonstrationDirectory, literalName + k_ExtensionType);
                 uniqueNameCounter++;
             }
+            */
 
             return filePath;
         }
