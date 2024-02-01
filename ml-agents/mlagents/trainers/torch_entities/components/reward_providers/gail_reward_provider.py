@@ -2,12 +2,12 @@ from typing import Optional, Dict, List
 import numpy as np
 from mlagents.torch_utils import torch, default_device
 
-from mlagents.trainers.buffer import AgentBuffer, BufferKey
+from mlagents.trainers.buffer import AgentBuffer, BufferKey, ObservationKeyPrefix
 from mlagents.trainers.torch_entities.components.reward_providers.base_reward_provider import (
     BaseRewardProvider,
 )
 from mlagents.trainers.settings import GAILSettings
-from mlagents_envs.base_env import BehaviorSpec
+from mlagents_envs.base_env import BehaviorSpec, ObservationType
 from mlagents_envs import logging_util
 from mlagents.trainers.torch_entities.utils import ModelUtils
 from mlagents.trainers.torch_entities.agent_action import AgentAction
@@ -32,7 +32,28 @@ class GAILRewardProvider(BaseRewardProvider):
         params = list(self._discriminator_network.parameters())
         self.optimizer = torch.optim.Adam(params, lr=settings.learning_rate)
 
+    def fix_agent_buffer(self, mini_batch: AgentBuffer) -> AgentBuffer:
+        removed_index = self._discriminator_network.removed_index
+        if removed_index < 0:
+            return mini_batch
+        batch = AgentBuffer()
+        removed = False
+        for key, field in mini_batch._fields.items():
+            if isinstance(key, tuple):
+                key0, key1 = key
+                if isinstance(key0, ObservationKeyPrefix):
+                    if isinstance(key1, int):
+                        if key1 == removed_index:
+                            removed = True
+                            continue
+                        elif removed:
+                            key1 = key1-1
+                            key = (key0, key1)
+            batch[key] = field
+        return batch
+
     def evaluate(self, mini_batch: AgentBuffer) -> np.ndarray:
+        mini_batch = self.fix_agent_buffer(mini_batch)
         with torch.no_grad():
             estimates, _ = self._discriminator_network.compute_estimate(
                 mini_batch, use_vail_noise=False
@@ -46,10 +67,11 @@ class GAILRewardProvider(BaseRewardProvider):
             )
 
     def update(self, mini_batch: AgentBuffer) -> Dict[str, np.ndarray]:
-
+        mini_batch = self.fix_agent_buffer(mini_batch)
         expert_batch = self._demo_buffer.sample_mini_batch(
             mini_batch.num_experiences, 1
         )
+        expert_batch = self.fix_agent_buffer(expert_batch)
         self._discriminator_network.encoder.update_normalization(expert_batch)
 
         loss, stats_dict = self._discriminator_network.compute_loss(
@@ -72,6 +94,8 @@ class DiscriminatorNetwork(torch.nn.Module):
     EPSILON = 1e-7
     initial_beta = 0.0
 
+    removed_index = -1
+
     def __init__(self, specs: BehaviorSpec, settings: GAILSettings) -> None:
         super().__init__()
         self._use_vail = settings.use_vail
@@ -88,8 +112,17 @@ class DiscriminatorNetwork(torch.nn.Module):
         unencoded_size = (
             self._action_flattener.flattened_size + 1 if settings.use_actions else 0
         )  # +1 is for dones
+
+        observation_specs = []
+        for i in range(len(specs.observation_specs)):
+            spec = specs.observation_specs[i]
+            if "nogail" in spec.name:
+                self.removed_index = i
+            else:
+                observation_specs.append(spec)
+
         self.encoder = NetworkBody(
-            specs.observation_specs, encoder_settings, unencoded_size
+            observation_specs, encoder_settings, unencoded_size
         )
 
         estimator_input_size = encoder_settings.hidden_units
