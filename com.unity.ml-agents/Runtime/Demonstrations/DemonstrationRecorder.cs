@@ -72,6 +72,9 @@ namespace Unity.MLAgents.Demonstrations
             m_Agent = GetComponent<Agent>();
         }
 
+        public delegate void OnRecordingDone();
+        public static event OnRecordingDone recordingDoneEvent;
+
         void Update()
         {
             if (!Record)
@@ -88,6 +91,7 @@ namespace Unity.MLAgents.Demonstrations
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
 #endif
+                if(recordingDoneEvent != null) recordingDoneEvent();
             }
         }
 
