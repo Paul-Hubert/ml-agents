@@ -300,8 +300,10 @@ class WandbWriter(StatsWriter):
         """
         wandb.setup(wandb.Settings(program=__name__, program_relpath=__name__))
         options = run_options.as_dict()
+        resume = "must" if run_options.checkpoint_settings.resume == True else None if run_options.checkpoint_settings.force == True else "auto"
         wandb.init(project="Dynamical",
                    reinit=True,
+                   resume=resume,
                    config=options,
                    id=run_options.checkpoint_settings.run_id,
                    name=run_options.checkpoint_settings.run_id)
