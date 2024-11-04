@@ -96,3 +96,6 @@ coverage.xml
 /htmlcov/
 
 **/UserSettings/*
+
+# Somehow keeps on changing (guid conflict ?)
+com.unity.ml-agents/Samples*
