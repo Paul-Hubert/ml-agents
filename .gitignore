@@ -99,3 +99,5 @@ coverage.xml
 
 # Somehow keeps on changing (guid conflict ?)
 com.unity.ml-agents/Samples*
+
+**.pyproj
