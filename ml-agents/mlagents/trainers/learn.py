@@ -200,6 +200,8 @@ def create_environment_factory(
 
 
 def run_cli(options: RunOptions) -> None:
+    import __main__
+    print(__main__.__file__)
     try:
         print(
             """
